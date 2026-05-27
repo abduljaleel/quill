@@ -1,111 +1,274 @@
 import Link from "next/link";
 import { appConfig } from "@/lib/config";
 
-const storyPosters = [
+const ACCENT = "#f0a050";
+
+const morphs = [
   {
-    title: "ORIGIN STORY",
-    tagline: "Where it all began",
-    icon: (
-      <svg viewBox="0 0 64 64" className="h-24 w-24 text-rose-500/10" fill="currentColor">
-        <path d="M32 56c-1.1 0-2-.9-2-2V36c0-4.4-3.6-8-8-8h-2c-1.1 0-2-.9-2-2s.9-2 2-2h2c4.4 0 8-3.6 8-8V10c0-1.1.9-2 2-2s2 .9 2 2v6c0 5.2-3.4 9.6-8 11.2V28c4.6 1.6 8 6 8 11.2V54c0 1.1-.9 2-2 2z" />
-        <circle cx="32" cy="10" r="4" />
-      </svg>
-    ),
+    intent: "I need to debug a memory leak in the worker pool.",
+    task: "Debugging a memory leak",
+    tools: [
+      { name: "heap viewer", icon: "heap" },
+      { name: "allocation graph", icon: "graph" },
+      { name: "GC trace", icon: "trace" },
+    ],
+    panels: [
+      { label: "Heap", value: "1.8 GB", trend: "+312 MB" },
+      { label: "Retained", value: "worker.queue#7" },
+      { label: "Last GC", value: "382ms" },
+    ],
   },
   {
-    title: "LAUNCH NARRATIVE",
-    tagline: "The world premiere",
-    icon: (
-      <svg viewBox="0 0 64 64" className="h-24 w-24 text-rose-500/10" fill="currentColor">
-        <path d="M32 4l4 16h16l-13 9.5 5 15.5-12-9-12 9 5-15.5L12 20h16z" />
-        <path d="M32 50v10M28 56h8" strokeWidth="2" stroke="currentColor" fill="none" />
-      </svg>
-    ),
+    intent: "Building the new pricing table component.",
+    task: "Writing a React component",
+    tools: [
+      { name: "prop inspector", icon: "props" },
+      { name: "style preview", icon: "style" },
+      { name: "component tree", icon: "tree" },
+    ],
+    panels: [
+      { label: "Props", value: "tier, price, cta" },
+      { label: "Variants", value: "5" },
+      { label: "Storybook", value: "synced" },
+    ],
   },
   {
-    title: "THE PITCH",
-    tagline: "Three minutes to change everything",
-    icon: (
-      <svg viewBox="0 0 64 64" className="h-24 w-24 text-rose-500/10" fill="currentColor">
-        <ellipse cx="32" cy="52" rx="20" ry="4" opacity="0.3" />
-        <path d="M32 8v36M24 12l8-4 8 4" strokeWidth="3" stroke="currentColor" fill="none" />
-        <circle cx="32" cy="44" r="8" opacity="0.5" />
-      </svg>
-    ),
-  },
-  {
-    title: "CASE STUDY",
-    tagline: "The proof is in the story",
-    icon: (
-      <svg viewBox="0 0 64 64" className="h-24 w-24 text-rose-500/10" fill="currentColor">
-        <path d="M20 8h24l8 8v40H12V8h8z" opacity="0.3" />
-        <path d="M32 24l4 8 8 2-6 6 2 8-8-4-8 4 2-8-6-6 8-2z" />
-      </svg>
-    ),
-  },
-  {
-    title: "BRAND MANIFESTO",
-    tagline: "What you stand for",
-    icon: (
-      <svg viewBox="0 0 64 64" className="h-24 w-24 text-rose-500/10" fill="currentColor">
-        <path d="M16 12h4v40h-4zM20 12h20v6H20z" />
-        <path d="M20 18h18v6H20z" opacity="0.7" />
-      </svg>
-    ),
-  },
-  {
-    title: "PRODUCT EXPLAINER",
-    tagline: "Complex made clear",
-    icon: (
-      <svg viewBox="0 0 64 64" className="h-24 w-24 text-rose-500/10" fill="currentColor">
-        <circle cx="32" cy="20" r="12" opacity="0.3" />
-        <path d="M32 36v8M30 48h4v4h-4z" />
-        <circle cx="32" cy="20" r="4" />
-      </svg>
-    ),
+    intent: "Moving billing schema to Postgres 16.",
+    task: "Migrating a database",
+    tools: [
+      { name: "schema diff", icon: "diff" },
+      { name: "rollback", icon: "rollback" },
+      { name: "migration runner", icon: "runner" },
+    ],
+    panels: [
+      { label: "Changes", value: "3 tables, 1 index" },
+      { label: "Reversible", value: "yes" },
+      { label: "Dry-run", value: "green" },
+    ],
   },
 ];
 
-const credits = [
-  { phase: "PRE-PRODUCTION", desc: "Choose your story type" },
-  { phase: "PRODUCTION", desc: "Build section by section" },
-  { phase: "POST-PRODUCTION", desc: "Review & refine" },
-  { phase: "PREMIERE", desc: "Publish & share" },
+const loop = [
+  { step: "USER TYPES", detail: "intent expressed in natural language" },
+  { step: "CONTEXT COMPRESSED", detail: "repo, history, files, errors" },
+  { step: "COMPONENTS SYNTHESIZED", detail: "panels, tools, shortcuts" },
+  { step: "UI RENDERED", detail: "in under 400ms" },
 ];
+
+function ToolIcon({ kind }: { kind: string }) {
+  // Lightweight inline svgs so we don't add deps.
+  const common = "h-3.5 w-3.5";
+  switch (kind) {
+    case "heap":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <rect x="2" y="9" width="3" height="5" />
+          <rect x="6.5" y="6" width="3" height="8" />
+          <rect x="11" y="3" width="3" height="11" />
+        </svg>
+      );
+    case "graph":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M2 12 L6 7 L9 9 L14 3" />
+          <circle cx="2" cy="12" r="1" />
+          <circle cx="14" cy="3" r="1" />
+        </svg>
+      );
+    case "trace":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M2 8 L4 8 L5 4 L7 12 L9 6 L11 9 L14 8" />
+        </svg>
+      );
+    case "props":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <rect x="2" y="3" width="12" height="2.5" />
+          <rect x="2" y="6.5" width="9" height="2.5" />
+          <rect x="2" y="10" width="11" height="2.5" />
+        </svg>
+      );
+    case "style":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <circle cx="5" cy="5" r="3" />
+          <rect x="8" y="8" width="6" height="6" />
+        </svg>
+      );
+    case "tree":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <circle cx="8" cy="3" r="1.2" />
+          <circle cx="4" cy="13" r="1.2" />
+          <circle cx="12" cy="13" r="1.2" />
+          <path d="M8 4 L4 12 M8 4 L12 12" />
+        </svg>
+      );
+    case "diff":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M3 3 H8 V13 H3 Z M8 6 H13 V13 H8 Z" />
+        </svg>
+      );
+    case "rollback":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M3 8 A5 5 0 1 1 8 13" />
+          <path d="M3 8 L5 6 M3 8 L5 10" />
+        </svg>
+      );
+    case "runner":
+      return (
+        <svg viewBox="0 0 16 16" className={common} fill="currentColor">
+          <path d="M3 3 L13 8 L3 13 Z" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function QuillIcon({ size = 28 }: { size?: number }) {
+  // Quill pen — handwritten feel.
+  return (
+    <svg viewBox="0 0 64 64" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M48 8 C 38 18, 24 30, 14 46 L 18 52 C 34 42, 46 28, 56 16 Z" fill="currentColor" fillOpacity="0.08" />
+      <path d="M48 8 C 38 18, 24 30, 14 46" />
+      <path d="M56 16 C 46 28, 34 42, 18 52" />
+      <path d="M18 52 L 14 56" />
+      <path d="M28 30 L 36 38" opacity="0.5" />
+      <path d="M22 38 L 30 46" opacity="0.4" />
+    </svg>
+  );
+}
+
+function MorphMockup({
+  morph,
+  active,
+}: {
+  morph: (typeof morphs)[number];
+  active: boolean;
+}) {
+  return (
+    <div
+      className="relative rounded-md border bg-[#0d0d0d] overflow-hidden transition-all"
+      style={{
+        borderColor: active ? `${ACCENT}66` : "rgba(255,255,255,0.06)",
+        boxShadow: active ? `0 0 0 1px ${ACCENT}22, 0 12px 40px -10px ${ACCENT}30` : undefined,
+      }}
+    >
+      {/* Window chrome */}
+      <div className="flex items-center justify-between border-b border-white/5 px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-white/15" />
+          <span className="h-2 w-2 rounded-full bg-white/15" />
+          <span className="h-2 w-2 rounded-full bg-white/15" />
+        </div>
+        <span className="font-mono text-[10px] tracking-wider text-white/30 uppercase">
+          quill — {morph.task}
+        </span>
+        <span className="h-2 w-8" />
+      </div>
+
+      {/* Morphing toolbar */}
+      <div className="flex items-center gap-1 border-b border-white/5 px-3 py-2 bg-black/40">
+        {morph.tools.map((t) => (
+          <div
+            key={t.name}
+            className="flex items-center gap-1.5 rounded-sm border px-2 py-1"
+            style={{ borderColor: `${ACCENT}33`, color: ACCENT }}
+          >
+            <ToolIcon kind={t.icon} />
+            <span className="font-mono text-[10px] tracking-wide">{t.name}</span>
+          </div>
+        ))}
+        <div className="ml-auto font-mono text-[10px] text-white/20">synthesized</div>
+      </div>
+
+      {/* Body — left rail of panels, right "code" placeholder */}
+      <div className="grid grid-cols-3 gap-px bg-white/5 min-h-[180px]">
+        <div className="col-span-1 bg-[#0d0d0d] p-3 flex flex-col gap-2">
+          {morph.panels.map((p) => (
+            <div key={p.label} className="border border-white/5 rounded-sm p-2">
+              <div className="font-mono text-[9px] uppercase tracking-wider text-white/30">
+                {p.label}
+              </div>
+              <div className="font-mono text-xs text-white/80 mt-0.5 truncate">
+                {p.value}
+              </div>
+              {"trend" in p && p.trend ? (
+                <div className="font-mono text-[10px] mt-0.5" style={{ color: ACCENT }}>
+                  {p.trend}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+        <div className="col-span-2 bg-[#080808] p-3">
+          <div className="space-y-1.5">
+            {[68, 84, 52, 76, 90, 60, 48].map((w, i) => (
+              <div
+                key={i}
+                className="h-1.5 rounded-full"
+                style={{
+                  width: `${w}%`,
+                  background:
+                    i === 2 || i === 5 ? `${ACCENT}55` : "rgba(255,255,255,0.06)",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Intent caption */}
+      <div className="border-t border-white/5 bg-black/60 px-3 py-2 flex items-center gap-2">
+        <span className="font-mono text-[10px] tracking-wider uppercase text-white/30">
+          intent
+        </span>
+        <span className="font-mono text-[11px] text-white/70 italic">
+          &ldquo;{morph.intent}&rdquo;
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white">
-      {/* Top letterbox bar */}
-      <div className="h-[5vh] bg-[#0a0a0a] w-full flex-shrink-0" />
-
-      {/* Nav — sits just below letterbox */}
-      <header className="bg-black">
+    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#f0a050]/30">
+      {/* Nav */}
+      <header className="border-b border-white/5">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            {/* Film reel icon */}
-            <svg viewBox="0 0 24 24" className="h-5 w-5 text-rose-500" fill="currentColor">
-              <circle cx="12" cy="12" r="10" opacity="0.2" />
-              <circle cx="12" cy="12" r="3" />
-              <circle cx="12" cy="5" r="1.5" />
-              <circle cx="12" cy="19" r="1.5" />
-              <circle cx="5" cy="12" r="1.5" />
-              <circle cx="19" cy="12" r="1.5" />
-            </svg>
-            <span className="font-semibold text-sm tracking-wider text-white uppercase">
-              {appConfig.name}
-            </span>
+          <div className="flex items-center gap-3" style={{ color: ACCENT }}>
+            <QuillIcon size={22} />
+            <div className="flex flex-col leading-tight">
+              <span
+                className="font-serif text-base"
+                style={{ fontFamily: "ui-serif, Georgia, serif" }}
+              >
+                {appConfig.name}
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-white/35">
+                quill.ie &middot; Dublin
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
+            <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-[0.25em] text-white/35">
+              Optimization layer
+            </span>
             <Link
               href="/login"
-              className="text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
+              className="text-sm text-white/50 hover:text-white transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/signup"
-              className="text-sm text-rose-400 border border-rose-500/40 rounded px-3 py-1.5 hover:bg-rose-500/10 transition-colors"
+              className="text-sm border rounded px-3 py-1.5 transition-colors hover:bg-white/5"
+              style={{ color: ACCENT, borderColor: `${ACCENT}55` }}
             >
               Get started
             </Link>
@@ -113,75 +276,220 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — Cinematic text reveal */}
-      <section className="flex-1 flex items-center justify-center px-6 py-24 sm:py-32">
-        <div className="text-center max-w-4xl">
-          <h1 className="text-5xl sm:text-7xl font-bold tracking-tight leading-[1.05]">
-            Every company has a story.
-          </h1>
-          <p className="mt-6 text-3xl sm:text-4xl font-medium text-rose-400 tracking-tight">
-            Most tell it badly.
-          </p>
-          <p className="mt-8 text-xl sm:text-2xl text-neutral-400 font-light">
-            We fix that.
-          </p>
+      {/* Hero */}
+      <section className="mx-auto max-w-6xl px-6 pt-24 pb-16 sm:pt-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="lg:col-span-7">
+            <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-white/40">
+              From Dublin &mdash; city of Yeats, Joyce, and Beckett,
+              <br className="hidden sm:block" /> where the page rewrites itself.
+            </p>
+            <h1
+              className="mt-8 text-[5rem] sm:text-[7rem] lg:text-[8.5rem] leading-[0.95] tracking-tight"
+              style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
+            >
+              Quill
+            </h1>
+            <p
+              className="mt-6 text-xl sm:text-2xl text-white/70 max-w-xl"
+              style={{ fontFamily: "ui-serif, Georgia, serif" }}
+            >
+              Development environment that builds itself for your current task.
+            </p>
+            <p className="mt-6 max-w-xl text-base text-white/45 leading-relaxed">
+              <span className="font-mono text-xs uppercase tracking-wider" style={{ color: ACCENT }}>
+                The problem &mdash;
+              </span>{" "}
+              your IDE shows the same toolbar regardless of task. Quill listens
+              to intent, compresses context, and renders the panels you
+              actually need.
+            </p>
+            <div className="mt-10 flex items-center gap-4">
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded text-sm font-medium transition-colors"
+                style={{ backgroundColor: ACCENT, color: "#0a0a0a" }}
+              >
+                Try Quill
+                <span aria-hidden>&rarr;</span>
+              </Link>
+              <Link
+                href="/login"
+                className="text-sm text-white/50 hover:text-white transition-colors"
+              >
+                or sign in
+              </Link>
+            </div>
+          </div>
+
+          {/* Large quill illustration */}
+          <div className="lg:col-span-5 flex justify-center">
+            <div style={{ color: ACCENT }} className="opacity-90">
+              <svg
+                viewBox="0 0 240 320"
+                className="w-56 sm:w-72"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {/* Feather body */}
+                <path
+                  d="M180 30 C 150 60, 110 100, 80 150 C 55 190, 40 230, 30 270 L 50 290 C 95 270, 140 235, 175 195 C 205 160, 220 110, 215 60 Z"
+                  fill="currentColor"
+                  fillOpacity="0.08"
+                />
+                <path d="M180 30 C 150 60, 110 100, 80 150 C 55 190, 40 230, 30 270" />
+                <path d="M215 60 C 220 110, 205 160, 175 195 C 140 235, 95 270, 50 290" />
+                {/* Spine */}
+                <path d="M180 30 L 50 290" strokeWidth={1.3} />
+                {/* Barbs — left side */}
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => {
+                  const t = i / 8;
+                  const x1 = 180 - t * 130;
+                  const y1 = 30 + t * 260;
+                  return (
+                    <path
+                      key={`l${i}`}
+                      d={`M ${x1} ${y1} Q ${x1 - 20 - i * 3} ${y1 + 10}, ${x1 - 35 - i * 4} ${y1 + 28}`}
+                      opacity={0.5}
+                    />
+                  );
+                })}
+                {/* Barbs — right side */}
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => {
+                  const t = i / 8;
+                  const x1 = 180 - t * 130;
+                  const y1 = 30 + t * 260;
+                  return (
+                    <path
+                      key={`r${i}`}
+                      d={`M ${x1} ${y1} Q ${x1 + 20 + i * 2} ${y1 - 5}, ${x1 + 38 + i * 2.5} ${y1 - 20}`}
+                      opacity={0.4}
+                    />
+                  );
+                })}
+                {/* Tip + ink drop */}
+                <path d="M 50 290 L 38 304" strokeWidth={1.4} />
+                <circle cx="34" cy="310" r="3" fill="currentColor" />
+              </svg>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Story Posters — 3x2 grid */}
-      <section className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {storyPosters.map((poster) => (
-            <div
-              key={poster.title}
-              className="group relative rounded-lg overflow-hidden border border-white/5 hover:border-rose-500/30 transition-all cursor-pointer"
-              style={{ aspectRatio: "2/3" }}
+      {/* The morphing IDE — three views */}
+      <section className="mx-auto max-w-6xl px-6 py-20 border-t border-white/5">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <p
+              className="font-mono text-[11px] uppercase tracking-[0.3em]"
+              style={{ color: ACCENT }}
             >
-              {/* Dark background with bottom gradient */}
-              <div className="absolute inset-0 bg-[#0d0d0d]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+              The morphing IDE
+            </p>
+            <h2
+              className="mt-3 text-3xl sm:text-4xl tracking-tight"
+              style={{ fontFamily: "ui-serif, Georgia, serif" }}
+            >
+              One environment. A different shape for every task.
+            </h2>
+          </div>
+          <span className="hidden sm:block font-mono text-[10px] uppercase tracking-wider text-white/30">
+            three intents, three editors
+          </span>
+        </div>
 
-              {/* Faded icon in center */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-60 group-hover:opacity-80 transition-opacity">
-                {poster.icon}
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {morphs.map((m, i) => (
+            <MorphMockup key={m.task} morph={m} active={i === 1} />
+          ))}
+        </div>
 
-              {/* Text at bottom */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-                <h3 className="text-rose-400 font-bold text-sm sm:text-base tracking-wider">
-                  {poster.title}
-                </h3>
-                <p className="text-neutral-500 text-xs sm:text-sm mt-1">
-                  {poster.tagline}
-                </p>
-              </div>
-
-              {/* Hover brightness overlay */}
-              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.03] transition-colors" />
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {morphs.map((m) => (
+            <div key={`${m.task}-caption`} className="px-1">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-white/30">
+                Task
+              </p>
+              <p className="mt-1 text-sm text-white/70">{m.task}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Process as Film Credits */}
+      {/* Intent inference loop */}
+      <section className="mx-auto max-w-6xl px-6 py-20 border-t border-white/5">
+        <p
+          className="font-mono text-[11px] uppercase tracking-[0.3em]"
+          style={{ color: ACCENT }}
+        >
+          Intent inference loop
+        </p>
+        <h2
+          className="mt-3 text-3xl sm:text-4xl tracking-tight"
+          style={{ fontFamily: "ui-serif, Georgia, serif" }}
+        >
+          From a sentence to a usable editor in one breath.
+        </h2>
+
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-px bg-white/5 rounded-lg overflow-hidden">
+          {loop.map((s, i) => (
+            <div
+              key={s.step}
+              className="bg-[#0d0d0d] p-6 flex flex-col gap-3 relative"
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className="font-mono text-[10px] tracking-wider"
+                  style={{ color: ACCENT }}
+                >
+                  0{i + 1}
+                </span>
+                {i < loop.length - 1 ? (
+                  <span
+                    className="hidden md:inline font-mono text-xs"
+                    style={{ color: `${ACCENT}88` }}
+                    aria-hidden
+                  >
+                    &rarr;
+                  </span>
+                ) : null}
+              </div>
+              <p className="font-mono text-sm tracking-wider text-white/90">
+                {s.step}
+              </p>
+              <p className="text-xs text-white/45 leading-relaxed">
+                {s.detail}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Stats */}
       <section className="border-t border-white/5">
-        <div className="mx-auto max-w-3xl px-6 py-24 text-center">
-          <div className="space-y-10">
-            {credits.map((credit, i) => (
-              <div key={credit.phase}>
-                <p className="text-xs font-mono tracking-[0.4em] text-neutral-600 uppercase mb-2">
-                  {credit.phase}
-                </p>
-                <p className="text-lg sm:text-xl text-neutral-300 font-light">
-                  {credit.desc}
-                </p>
-                {i < credits.length - 1 && (
-                  <div className="mt-10 flex justify-center">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 text-neutral-700" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                      <path d="M12 5v14M5 12l7 7 7-7" />
-                    </svg>
-                  </div>
-                )}
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-white/5 rounded-lg overflow-hidden">
+            {[
+              { value: "0", label: "menu hunting" },
+              { value: "100%", label: "task-relevant UI" },
+              { value: "instant", label: "time-to-action" },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="bg-[#0d0d0d] p-10 text-center"
+              >
+                <div
+                  className="text-5xl sm:text-6xl tracking-tight"
+                  style={{ fontFamily: "ui-serif, Georgia, serif", color: ACCENT }}
+                >
+                  {s.value}
+                </div>
+                <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">
+                  {s.label}
+                </div>
               </div>
             ))}
           </div>
@@ -190,30 +498,55 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="border-t border-white/5">
-        <div className="mx-auto max-w-6xl px-6 py-24 text-center">
-          <Link
-            href="/signup"
-            className="inline-flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white rounded px-8 py-4 text-lg font-medium transition-colors"
+        <div className="mx-auto max-w-3xl px-6 py-24 text-center">
+          <h2
+            className="text-3xl sm:text-4xl tracking-tight"
+            style={{ fontFamily: "ui-serif, Georgia, serif" }}
           >
-            Start your story
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </Link>
+            Stop hunting through menus. Start writing.
+          </h2>
+          <p className="mt-4 text-white/50">
+            Quill watches what you&rsquo;re doing and shapes itself around it.
+          </p>
+          <div className="mt-8">
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded text-sm font-medium transition-colors"
+              style={{ backgroundColor: ACCENT, color: "#0a0a0a" }}
+            >
+              Open Quill
+              <span aria-hidden>&rarr;</span>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Footer — Film studio credit style */}
-      <footer className="border-t border-white/5 mt-auto">
-        <div className="mx-auto max-w-6xl px-6 py-8 text-center">
-          <p className="text-xs font-mono tracking-[0.3em] text-neutral-600 uppercase">
-            {appConfig.name} &mdash; A 12 Cities Production
-          </p>
+      {/* Footer */}
+      <footer className="border-t border-white/5">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row items-center justify-between px-6 py-8">
+          <div className="flex items-center gap-3" style={{ color: ACCENT }}>
+            <QuillIcon size={18} />
+            <span
+              className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/60"
+            >
+              {appConfig.name} &middot; Dublin &middot; quill.ie
+            </span>
+          </div>
+          <a
+            href="https://abduljaleel.xyz/aletheia/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 border rounded px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] transition-colors hover:bg-white/5"
+            style={{ borderColor: `${ACCENT}55`, color: ACCENT }}
+          >
+            Part of the Aletheia stack
+            <span aria-hidden>&#8599;</span>
+          </a>
+        </div>
+        <div className="mx-auto max-w-6xl px-6 pb-6 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-white/20">
+          Optimization layer &middot; from Dublin, the page rewrites itself
         </div>
       </footer>
-
-      {/* Bottom letterbox bar */}
-      <div className="h-[5vh] bg-[#0a0a0a] w-full flex-shrink-0" />
     </div>
   );
 }

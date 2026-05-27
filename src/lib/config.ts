@@ -1,7 +1,8 @@
 export const appConfig = {
-  name: "Playbook Films",
-  description: "The ride of a lifetime. Turn complex products into felt stories.",
-  url: "https://playbookfilms.ie",
+  name: "Quill",
+  description:
+    "Development environment that builds itself for your current task.",
+  url: "https://quill.ie",
   navItems: [
     { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
     { title: "Stories", href: "/stories", icon: "film" },
