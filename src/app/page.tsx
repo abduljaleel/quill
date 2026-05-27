@@ -5,8 +5,8 @@ const ACCENT = "#f0a050";
 
 const morphs = [
   {
-    intent: "I need to debug a memory leak in the worker pool.",
-    task: "Debugging a memory leak",
+    intent: "Debugging a memory leak",
+    task: "debug:memory",
     tools: [
       { name: "heap viewer", icon: "heap" },
       { name: "allocation graph", icon: "graph" },
@@ -19,8 +19,8 @@ const morphs = [
     ],
   },
   {
-    intent: "Building the new pricing table component.",
-    task: "Writing a React component",
+    intent: "Writing a React component",
+    task: "build:component",
     tools: [
       { name: "prop inspector", icon: "props" },
       { name: "style preview", icon: "style" },
@@ -33,8 +33,8 @@ const morphs = [
     ],
   },
   {
-    intent: "Moving billing schema to Postgres 16.",
-    task: "Migrating a database",
+    intent: "Migrating a database",
+    task: "migrate:db",
     tools: [
       { name: "schema diff", icon: "diff" },
       { name: "rollback", icon: "rollback" },
@@ -56,8 +56,7 @@ const loop = [
 ];
 
 function ToolIcon({ kind }: { kind: string }) {
-  // Lightweight inline svgs so we don't add deps.
-  const common = "h-3.5 w-3.5";
+  const common = "h-3 w-3";
   switch (kind) {
     case "heap":
       return (
@@ -129,366 +128,247 @@ function ToolIcon({ kind }: { kind: string }) {
   }
 }
 
-function QuillIcon({ size = 28 }: { size?: number }) {
-  // Quill pen — handwritten feel.
-  return (
-    <svg viewBox="0 0 64 64" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M48 8 C 38 18, 24 30, 14 46 L 18 52 C 34 42, 46 28, 56 16 Z" fill="currentColor" fillOpacity="0.08" />
-      <path d="M48 8 C 38 18, 24 30, 14 46" />
-      <path d="M56 16 C 46 28, 34 42, 18 52" />
-      <path d="M18 52 L 14 56" />
-      <path d="M28 30 L 36 38" opacity="0.5" />
-      <path d="M22 38 L 30 46" opacity="0.4" />
-    </svg>
-  );
-}
-
-function MorphMockup({
-  morph,
-  active,
-}: {
-  morph: (typeof morphs)[number];
-  active: boolean;
-}) {
-  return (
-    <div
-      className="relative rounded-md border bg-[#0d0d0d] overflow-hidden transition-all"
-      style={{
-        borderColor: active ? `${ACCENT}66` : "rgba(255,255,255,0.06)",
-        boxShadow: active ? `0 0 0 1px ${ACCENT}22, 0 12px 40px -10px ${ACCENT}30` : undefined,
-      }}
-    >
-      {/* Window chrome */}
-      <div className="flex items-center justify-between border-b border-white/5 px-3 py-2">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-white/15" />
-          <span className="h-2 w-2 rounded-full bg-white/15" />
-          <span className="h-2 w-2 rounded-full bg-white/15" />
-        </div>
-        <span className="font-mono text-[10px] tracking-wider text-white/30 uppercase">
-          quill — {morph.task}
-        </span>
-        <span className="h-2 w-8" />
-      </div>
-
-      {/* Morphing toolbar */}
-      <div className="flex items-center gap-1 border-b border-white/5 px-3 py-2 bg-black/40">
-        {morph.tools.map((t) => (
-          <div
-            key={t.name}
-            className="flex items-center gap-1.5 rounded-sm border px-2 py-1"
-            style={{ borderColor: `${ACCENT}33`, color: ACCENT }}
-          >
-            <ToolIcon kind={t.icon} />
-            <span className="font-mono text-[10px] tracking-wide">{t.name}</span>
-          </div>
-        ))}
-        <div className="ml-auto font-mono text-[10px] text-white/20">synthesized</div>
-      </div>
-
-      {/* Body — left rail of panels, right "code" placeholder */}
-      <div className="grid grid-cols-3 gap-px bg-white/5 min-h-[180px]">
-        <div className="col-span-1 bg-[#0d0d0d] p-3 flex flex-col gap-2">
-          {morph.panels.map((p) => (
-            <div key={p.label} className="border border-white/5 rounded-sm p-2">
-              <div className="font-mono text-[9px] uppercase tracking-wider text-white/30">
-                {p.label}
-              </div>
-              <div className="font-mono text-xs text-white/80 mt-0.5 truncate">
-                {p.value}
-              </div>
-              {"trend" in p && p.trend ? (
-                <div className="font-mono text-[10px] mt-0.5" style={{ color: ACCENT }}>
-                  {p.trend}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-        <div className="col-span-2 bg-[#080808] p-3">
-          <div className="space-y-1.5">
-            {[68, 84, 52, 76, 90, 60, 48].map((w, i) => (
-              <div
-                key={i}
-                className="h-1.5 rounded-full"
-                style={{
-                  width: `${w}%`,
-                  background:
-                    i === 2 || i === 5 ? `${ACCENT}55` : "rgba(255,255,255,0.06)",
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Intent caption */}
-      <div className="border-t border-white/5 bg-black/60 px-3 py-2 flex items-center gap-2">
-        <span className="font-mono text-[10px] tracking-wider uppercase text-white/30">
-          intent
-        </span>
-        <span className="font-mono text-[11px] text-white/70 italic">
-          &ldquo;{morph.intent}&rdquo;
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-[#f0a050]/30">
-      {/* Nav */}
-      <header className="border-b border-white/5">
+    <div
+      className="flex min-h-screen flex-col bg-[#08090d] text-[#d4d4d8]"
+      style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" }}
+    >
+      {/* ──────────────────────────────────────────────────────────────
+          NAV
+      ────────────────────────────────────────────────────────────── */}
+      <header className="border-b border-[#16181d]">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-3" style={{ color: ACCENT }}>
-            <QuillIcon size={22} />
-            <div className="flex flex-col leading-tight">
-              <span
-                className="font-serif text-base"
-                style={{ fontFamily: "ui-serif, Georgia, serif" }}
-              >
-                {appConfig.name}
-              </span>
-              <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-white/35">
-                quill.ie &middot; Dublin
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-[0.25em] text-white/35">
-              Optimization layer
+          <div className="flex items-center gap-3">
+            <div
+              className="h-2 w-2 rounded-full animate-pulse"
+              style={{ backgroundColor: ACCENT, boxShadow: `0 0 8px ${ACCENT}` }}
+            />
+            <span
+              className="text-base tracking-wide text-[#fafafa]"
+              style={{ fontFamily: "'Cormorant Garamond', 'Iowan Old Style', Georgia, serif", fontWeight: 600 }}
+            >
+              Quill
             </span>
+            <span
+              className="text-[10px] uppercase tracking-[0.25em] text-[#52525b] hidden sm:inline"
+              style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+            >
+              · Dublin
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
             <Link
               href="/login"
-              className="text-sm text-white/50 hover:text-white transition-colors"
+              className="text-xs text-[#71717a] hover:text-[#fafafa] transition-colors"
+              style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
             >
-              Sign in
+              sign in
             </Link>
             <Link
               href="/signup"
-              className="text-sm border rounded px-3 py-1.5 transition-colors hover:bg-white/5"
-              style={{ color: ACCENT, borderColor: `${ACCENT}55` }}
+              className="text-xs border px-4 py-1.5 transition-colors"
+              style={{
+                fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+                borderColor: `${ACCENT}66`,
+                color: ACCENT,
+              }}
             >
-              Get started
+              get started
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 pt-24 pb-16 sm:pt-32">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-7">
-            <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-white/40">
-              From Dublin &mdash; city of Yeats, Joyce, and Beckett,
-              <br className="hidden sm:block" /> where the page rewrites itself.
-            </p>
-            <h1
-              className="mt-8 text-[5rem] sm:text-[7rem] lg:text-[8.5rem] leading-[0.95] tracking-tight"
-              style={{ fontFamily: "ui-serif, Georgia, 'Times New Roman', serif" }}
-            >
-              Quill
-            </h1>
-            <p
-              className="mt-6 text-xl sm:text-2xl text-white/70 max-w-xl"
-              style={{ fontFamily: "ui-serif, Georgia, serif" }}
-            >
-              Development environment that builds itself for your current task.
-            </p>
-            <p className="mt-6 max-w-xl text-base text-white/45 leading-relaxed">
-              <span className="font-mono text-xs uppercase tracking-wider" style={{ color: ACCENT }}>
-                The problem &mdash;
-              </span>{" "}
-              your IDE shows the same toolbar regardless of task. Quill listens
-              to intent, compresses context, and renders the panels you
-              actually need.
-            </p>
-            <div className="mt-10 flex items-center gap-4">
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded text-sm font-medium transition-colors"
-                style={{ backgroundColor: ACCENT, color: "#0a0a0a" }}
-              >
-                Try Quill
-                <span aria-hidden>&rarr;</span>
-              </Link>
-              <Link
-                href="/login"
-                className="text-sm text-white/50 hover:text-white transition-colors"
-              >
-                or sign in
-              </Link>
-            </div>
-          </div>
-
-          {/* Large quill illustration */}
-          <div className="lg:col-span-5 flex justify-center">
-            <div style={{ color: ACCENT }} className="opacity-90">
-              <svg
-                viewBox="0 0 240 320"
-                className="w-56 sm:w-72"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {/* Feather body */}
-                <path
-                  d="M180 30 C 150 60, 110 100, 80 150 C 55 190, 40 230, 30 270 L 50 290 C 95 270, 140 235, 175 195 C 205 160, 220 110, 215 60 Z"
-                  fill="currentColor"
-                  fillOpacity="0.08"
-                />
-                <path d="M180 30 C 150 60, 110 100, 80 150 C 55 190, 40 230, 30 270" />
-                <path d="M215 60 C 220 110, 205 160, 175 195 C 140 235, 95 270, 50 290" />
-                {/* Spine */}
-                <path d="M180 30 L 50 290" strokeWidth={1.3} />
-                {/* Barbs — left side */}
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => {
-                  const t = i / 8;
-                  const x1 = 180 - t * 130;
-                  const y1 = 30 + t * 260;
-                  return (
-                    <path
-                      key={`l${i}`}
-                      d={`M ${x1} ${y1} Q ${x1 - 20 - i * 3} ${y1 + 10}, ${x1 - 35 - i * 4} ${y1 + 28}`}
-                      opacity={0.5}
-                    />
-                  );
-                })}
-                {/* Barbs — right side */}
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => {
-                  const t = i / 8;
-                  const x1 = 180 - t * 130;
-                  const y1 = 30 + t * 260;
-                  return (
-                    <path
-                      key={`r${i}`}
-                      d={`M ${x1} ${y1} Q ${x1 + 20 + i * 2} ${y1 - 5}, ${x1 + 38 + i * 2.5} ${y1 - 20}`}
-                      opacity={0.4}
-                    />
-                  );
-                })}
-                {/* Tip + ink drop */}
-                <path d="M 50 290 L 38 304" strokeWidth={1.4} />
-                <circle cx="34" cy="310" r="3" fill="currentColor" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* The morphing IDE — three views */}
-      <section className="mx-auto max-w-6xl px-6 py-20 border-t border-white/5">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <p
-              className="font-mono text-[11px] uppercase tracking-[0.3em]"
-              style={{ color: ACCENT }}
-            >
-              The morphing IDE
-            </p>
-            <h2
-              className="mt-3 text-3xl sm:text-4xl tracking-tight"
-              style={{ fontFamily: "ui-serif, Georgia, serif" }}
-            >
-              One environment. A different shape for every task.
-            </h2>
-          </div>
-          <span className="hidden sm:block font-mono text-[10px] uppercase tracking-wider text-white/30">
-            three intents, three editors
+      {/* ──────────────────────────────────────────────────────────────
+          HERO
+      ────────────────────────────────────────────────────────────── */}
+      <section className="mx-auto flex w-full max-w-6xl flex-col items-center px-6 pt-28 pb-16 text-center">
+        <div className="flex items-center gap-2 mb-10">
+          <span
+            className="inline-block h-2 w-2 rounded-full animate-pulse"
+            style={{ backgroundColor: ACCENT, boxShadow: `0 0 10px ${ACCENT}` }}
+          />
+          <span
+            className="text-[10px] tracking-[0.3em] uppercase"
+            style={{ color: ACCENT, fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+          >
+            Quill · Dublin · Optimization Layer
           </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {morphs.map((m, i) => (
-            <MorphMockup key={m.task} morph={m} active={i === 1} />
-          ))}
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {morphs.map((m) => (
-            <div key={`${m.task}-caption`} className="px-1">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-white/30">
-                Task
-              </p>
-              <p className="mt-1 text-sm text-white/70">{m.task}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Intent inference loop */}
-      <section className="mx-auto max-w-6xl px-6 py-20 border-t border-white/5">
-        <p
-          className="font-mono text-[11px] uppercase tracking-[0.3em]"
-          style={{ color: ACCENT }}
+        <h1
+          className="text-5xl sm:text-6xl lg:text-7xl tracking-tight text-white leading-[1.05] max-w-4xl"
+          style={{ fontFamily: "'Cormorant Garamond', 'Iowan Old Style', Georgia, serif", fontWeight: 500 }}
         >
-          Intent inference loop
+          Development environment that builds itself for your current task.
+        </h1>
+
+        <p className="mt-8 max-w-2xl text-base sm:text-lg text-[#d4d4d8] leading-snug">
+          Quill listens to intent, compresses context, and renders the panels you actually need —
+          a new editor for every task, synthesized in real time.
         </p>
-        <h2
-          className="mt-3 text-3xl sm:text-4xl tracking-tight"
-          style={{ fontFamily: "ui-serif, Georgia, serif" }}
+        <p
+          className="mt-6 text-sm text-[#71717a]"
+          style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
         >
-          From a sentence to a usable editor in one breath.
-        </h2>
+          From Dublin — city of Yeats, Joyce, and Beckett, where the page rewrites itself.
+        </p>
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-px bg-white/5 rounded-lg overflow-hidden">
-          {loop.map((s, i) => (
-            <div
-              key={s.step}
-              className="bg-[#0d0d0d] p-6 flex flex-col gap-3 relative"
-            >
-              <div className="flex items-center justify-between">
-                <span
-                  className="font-mono text-[10px] tracking-wider"
-                  style={{ color: ACCENT }}
-                >
-                  0{i + 1}
-                </span>
-                {i < loop.length - 1 ? (
-                  <span
-                    className="hidden md:inline font-mono text-xs"
-                    style={{ color: `${ACCENT}88` }}
-                    aria-hidden
-                  >
-                    &rarr;
-                  </span>
-                ) : null}
-              </div>
-              <p className="font-mono text-sm tracking-wider text-white/90">
-                {s.step}
-              </p>
-              <p className="text-xs text-white/45 leading-relaxed">
-                {s.detail}
-              </p>
-            </div>
-          ))}
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <Link
+            href="/signup"
+            className="inline-block border px-6 py-2.5 text-xs transition-all duration-200"
+            style={{
+              fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+              borderColor: ACCENT,
+              color: ACCENT,
+              boxShadow: `0 0 20px ${ACCENT}30`,
+            }}
+          >
+            $ quill start →
+          </Link>
+          <Link
+            href="/login"
+            className="inline-block text-xs text-[#71717a] hover:text-[#fafafa] transition-colors px-4 py-2.5"
+            style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+          >
+            or sign in
+          </Link>
+        </div>
+
+        <div
+          className="mt-10 inline-block border-l-2 pl-4 py-1 text-left text-sm text-[#a1a1aa] max-w-md"
+          style={{ borderColor: `${ACCENT}80` }}
+        >
+          &ldquo;Why does my IDE show the same toolbar for debugging a memory leak
+          and writing a button?&rdquo;
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="border-t border-white/5">
+      {/* ──────────────────────────────────────────────────────────────
+          MORPHING IDE — 3 mockups
+      ────────────────────────────────────────────────────────────── */}
+      <section className="border-t border-[#16181d]">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-white/5 rounded-lg overflow-hidden">
-            {[
-              { value: "0", label: "menu hunting" },
-              { value: "100%", label: "task-relevant UI" },
-              { value: "instant", label: "time-to-action" },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="bg-[#0d0d0d] p-10 text-center"
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full animate-pulse"
+                style={{ backgroundColor: ACCENT }}
+              />
+              <span
+                className="text-[10px] uppercase tracking-[0.25em] text-[#71717a]"
+                style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
               >
-                <div
-                  className="text-5xl sm:text-6xl tracking-tight"
-                  style={{ fontFamily: "ui-serif, Georgia, serif", color: ACCENT }}
-                >
-                  {s.value}
+                /morph — three intents, three editors
+              </span>
+            </div>
+            <span
+              className="text-[10px] uppercase tracking-[0.25em] text-[#52525b]"
+              style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+            >
+              re-rendered in 380ms
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {morphs.map((m, idx) => (
+              <div
+                key={m.task}
+                className="rounded-md border border-[#16181d] bg-[#0a0c11] overflow-hidden"
+                style={
+                  idx === 1
+                    ? { borderColor: `${ACCENT}66`, boxShadow: `0 0 24px ${ACCENT}22` }
+                    : undefined
+                }
+              >
+                {/* Intent line at top */}
+                <div className="flex items-center gap-2 border-b border-[#16181d] px-3 py-2 bg-[#0e1118]">
+                  <span
+                    className="text-[9px] uppercase tracking-[0.2em] text-[#52525b]"
+                    style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                  >
+                    intent
+                  </span>
+                  <span
+                    className="text-[11px] text-white truncate"
+                    style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                  >
+                    &ldquo;{m.intent}&rdquo;
+                  </span>
                 </div>
-                <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">
-                  {s.label}
+
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-1.5 border-b border-[#16181d] px-3 py-2">
+                  {m.tools.map((t) => (
+                    <div
+                      key={t.name}
+                      className="flex items-center gap-1.5 rounded-sm border px-2 py-1"
+                      style={{ borderColor: `${ACCENT}40`, color: ACCENT }}
+                    >
+                      <ToolIcon kind={t.icon} />
+                      <span
+                        className="text-[10px] tracking-wide"
+                        style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                      >
+                        {t.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Sample readouts */}
+                <div className="p-3 space-y-2">
+                  {m.panels.map((p) => (
+                    <div
+                      key={p.label}
+                      className="border border-[#16181d] rounded-sm p-2 bg-[#0e1118]"
+                    >
+                      <div
+                        className="text-[9px] uppercase tracking-[0.2em] text-[#52525b]"
+                        style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                      >
+                        {p.label}
+                      </div>
+                      <div
+                        className="text-xs text-white mt-1 truncate"
+                        style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                      >
+                        {p.value}
+                      </div>
+                      {"trend" in p && p.trend ? (
+                        <div
+                          className="text-[10px] mt-0.5"
+                          style={{
+                            color: ACCENT,
+                            fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+                          }}
+                        >
+                          {p.trend}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Task footer */}
+                <div className="border-t border-[#16181d] px-3 py-2 bg-[#06070a]">
+                  <span
+                    className="text-[9px] uppercase tracking-[0.25em] text-[#52525b]"
+                    style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                  >
+                    task ·{" "}
+                  </span>
+                  <span
+                    className="text-[10px]"
+                    style={{
+                      color: ACCENT,
+                      fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+                    }}
+                  >
+                    {m.task}
+                  </span>
                 </div>
               </div>
             ))}
@@ -496,55 +376,235 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="border-t border-white/5">
-        <div className="mx-auto max-w-3xl px-6 py-24 text-center">
-          <h2
-            className="text-3xl sm:text-4xl tracking-tight"
-            style={{ fontFamily: "ui-serif, Georgia, serif" }}
+      {/* ──────────────────────────────────────────────────────────────
+          THE LOOP — 4 horizontal steps
+      ────────────────────────────────────────────────────────────── */}
+      <section className="border-t border-[#16181d]">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p
+            className="text-[10px] uppercase tracking-[0.3em] text-[#71717a] mb-3 text-center"
+            style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
           >
-            Stop hunting through menus. Start writing.
-          </h2>
-          <p className="mt-4 text-white/50">
-            Quill watches what you&rsquo;re doing and shapes itself around it.
+            The loop
           </p>
-          <div className="mt-8">
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded text-sm font-medium transition-colors"
-              style={{ backgroundColor: ACCENT, color: "#0a0a0a" }}
-            >
-              Open Quill
-              <span aria-hidden>&rarr;</span>
-            </Link>
+          <h2
+            className="text-3xl sm:text-4xl tracking-tight text-white text-center mb-12"
+            style={{ fontFamily: "'Cormorant Garamond', 'Iowan Old Style', Georgia, serif", fontWeight: 500 }}
+          >
+            From a sentence to a usable editor in one breath.
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {loop.map((s, i) => (
+              <div key={s.step} className="relative flex flex-col">
+                <div className="border border-[#16181d] bg-[#0a0c11] p-5 flex-1">
+                  <div className="flex items-center justify-between mb-3">
+                    <span
+                      className="text-[10px] tracking-[0.2em]"
+                      style={{
+                        color: ACCENT,
+                        fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+                      }}
+                    >
+                      0{i + 1}
+                    </span>
+                    {i < loop.length - 1 ? (
+                      <span
+                        className="hidden md:inline text-base"
+                        style={{ color: `${ACCENT}99` }}
+                        aria-hidden
+                      >
+                        →
+                      </span>
+                    ) : null}
+                  </div>
+                  <p
+                    className="text-xs text-white tracking-wider mb-2"
+                    style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                  >
+                    {s.step}
+                  </p>
+                  <p className="text-[11px] text-[#71717a] leading-relaxed">
+                    {s.detail}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row items-center justify-between px-6 py-8">
-          <div className="flex items-center gap-3" style={{ color: ACCENT }}>
-            <QuillIcon size={18} />
+      {/* ──────────────────────────────────────────────────────────────
+          FEATURES — 4 cards
+      ────────────────────────────────────────────────────────────── */}
+      <section className="border-t border-[#16181d]">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p
+            className="text-[10px] uppercase tracking-[0.3em] text-[#71717a] mb-10 text-center"
+            style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+          >
+            Four primitives
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                cmd: "quill.intent()",
+                label: "Intent inference",
+                desc: "Quill parses what you mean — debug, build, migrate — not what you click.",
+              },
+              {
+                cmd: "quill.compress()",
+                label: "Context compression",
+                desc: "Repo, history, errors, open files — distilled into a working set the model can hold.",
+              },
+              {
+                cmd: "quill.synthesize()",
+                label: "Real-time synthesis",
+                desc: "Panels, toolbars, and shortcuts assembled per-task. No two sessions look alike.",
+              },
+              {
+                cmd: "quill.render()",
+                label: "Task-relevant tools",
+                desc: "Only what the current task needs. Nothing else competes for attention.",
+              },
+            ].map((f) => (
+              <div
+                key={f.cmd}
+                className="border border-[#16181d] bg-[#0a0c11] p-5 hover:border-[#f0a050]/40 transition-colors group"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span
+                    className="text-[#52525b]"
+                    style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                  >
+                    &gt;
+                  </span>
+                  <span
+                    className="text-sm group-hover:text-white transition-colors"
+                    style={{ color: ACCENT, fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+                  >
+                    {f.cmd}
+                  </span>
+                </div>
+                <div className="text-white text-sm font-medium mb-2">{f.label}</div>
+                <div className="text-xs text-[#71717a] leading-relaxed">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────────
+          STATS
+      ────────────────────────────────────────────────────────────── */}
+      <section className="border-t border-[#16181d]" style={{ background: "#06070a" }}>
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <div className="grid gap-12 md:grid-cols-3 text-center">
+            <div>
+              <div
+                className="text-5xl sm:text-6xl text-white tracking-tight"
+                style={{ fontFamily: "'Cormorant Garamond', 'Iowan Old Style', Georgia, serif", fontWeight: 500 }}
+              >
+                <span style={{ color: ACCENT }}>0</span>
+              </div>
+              <div
+                className="mt-3 text-xs uppercase tracking-[0.25em] text-[#71717a]"
+                style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+              >
+                menu hunting
+              </div>
+            </div>
+            <div>
+              <div
+                className="text-5xl sm:text-6xl text-white tracking-tight"
+                style={{ fontFamily: "'Cormorant Garamond', 'Iowan Old Style', Georgia, serif", fontWeight: 500 }}
+              >
+                100<span style={{ color: ACCENT }}>%</span>
+              </div>
+              <div
+                className="mt-3 text-xs uppercase tracking-[0.25em] text-[#71717a]"
+                style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+              >
+                task-relevant UI
+              </div>
+            </div>
+            <div>
+              <div
+                className="text-5xl sm:text-6xl text-white tracking-tight"
+                style={{ fontFamily: "'Cormorant Garamond', 'Iowan Old Style', Georgia, serif", fontWeight: 500 }}
+              >
+                <span style={{ color: ACCENT }}>instant</span>
+              </div>
+              <div
+                className="mt-3 text-xs uppercase tracking-[0.25em] text-[#71717a]"
+                style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+              >
+                time-to-action
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────────
+          CTA
+      ────────────────────────────────────────────────────────────── */}
+      <section className="border-t border-[#16181d]">
+        <div className="mx-auto max-w-6xl px-6 py-24 text-center">
+          <p
+            className="text-[10px] uppercase tracking-[0.3em] text-[#71717a] mb-6"
+            style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+          >
+            Open the editor that matches your task
+          </p>
+          <Link
+            href="/signup"
+            className="inline-block border px-8 py-3 text-sm transition-all duration-200 hover:bg-opacity-10"
+            style={{
+              fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+              borderColor: ACCENT,
+              color: ACCENT,
+              boxShadow: `0 0 20px ${ACCENT}30`,
+            }}
+          >
+            $ quill init →
+          </Link>
+        </div>
+      </section>
+
+      {/* ──────────────────────────────────────────────────────────────
+          FOOTER
+      ────────────────────────────────────────────────────────────── */}
+      <footer className="border-t border-[#16181d]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className="text-xs text-[#52525b]"
+            style={{ fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace" }}
+          >
             <span
-              className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/60"
+              className="text-[#a1a1aa]"
+              style={{ fontFamily: "'Cormorant Garamond', 'Iowan Old Style', Georgia, serif", fontWeight: 600, fontSize: "0.9rem" }}
             >
-              {appConfig.name} &middot; Dublin &middot; quill.ie
+              {appConfig.name}
             </span>
+            <span className="mx-2">·</span>
+            <span>Dublin</span>
+            <span className="mx-2">·</span>
+            <span>quill.ie</span>
           </div>
           <a
             href="https://abduljaleel.xyz/aletheia/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 border rounded px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] transition-colors hover:bg-white/5"
-            style={{ borderColor: `${ACCENT}55`, color: ACCENT }}
+            className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.25em] px-3 py-1.5 border transition-colors hover:bg-opacity-10"
+            style={{
+              fontFamily: "'JetBrains Mono', 'SF Mono', Menlo, monospace",
+              borderColor: `${ACCENT}40`,
+              color: ACCENT,
+            }}
           >
-            Part of the Aletheia stack
-            <span aria-hidden>&#8599;</span>
+            Part of the Aletheia stack ↗
           </a>
-        </div>
-        <div className="mx-auto max-w-6xl px-6 pb-6 text-center font-mono text-[10px] uppercase tracking-[0.3em] text-white/20">
-          Optimization layer &middot; from Dublin, the page rewrites itself
         </div>
       </footer>
     </div>
