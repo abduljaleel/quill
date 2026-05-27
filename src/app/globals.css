@@ -1,6 +1,5 @@
 @import "tailwindcss";
-/* removed: tw-animate-css */
-/* removed: shadcn/tailwind.css */
+@source "../**/*.{ts,tsx,js,jsx}";
 
 @custom-variant dark (&:is(.dark *));
 
