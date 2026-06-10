@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -22,18 +22,30 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import {
-  stories,
   storyTypeLabels,
   storyStatusColors,
   getStoryProgress,
   getCompletedSections,
 } from "@/lib/data/stories";
-import type { StoryType, StoryStatus } from "@/lib/data/stories";
-import { Plus, Film } from "lucide-react";
+import type { Story } from "@/lib/data/stories";
+import { listStories } from "@/lib/data/api";
+import { Plus, Film, Loader2 } from "lucide-react";
 
 export default function StoriesPage() {
+  const [stories, setStories] = useState<Story[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  useEffect(() => {
+    listStories()
+      .then(setStories)
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load stories")
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = stories.filter((s) => {
     if (typeFilter !== "all" && s.type !== typeFilter) return false;
@@ -57,6 +69,12 @@ export default function StoriesPage() {
           </Button>
         </Link>
       </div>
+
+      {error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3">
@@ -115,55 +133,68 @@ export default function StoriesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((story) => {
-                const progress = getStoryProgress(story);
-                const completed = getCompletedSections(story);
-                return (
-                  <TableRow key={story.id}>
-                    <TableCell>
-                      <Link
-                        href={`/stories/${story.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {story.title}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {storyTypeLabels[story.type]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${storyStatusColors[story.status]}`}
-                      >
-                        {story.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={progress} className="h-1.5 w-20" />
-                        <span className="text-xs text-muted-foreground">
-                          {completed}/{story.sections.length}
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-12 text-center">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground/50" />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Loading stories...
+                    </p>
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading &&
+                filtered.map((story) => {
+                  const progress = getStoryProgress(story);
+                  const completed = getCompletedSections(story);
+                  return (
+                    <TableRow key={story.id}>
+                      <TableCell>
+                        <Link
+                          href={`/stories/${story.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {story.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {storyTypeLabels[story.type]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${storyStatusColors[story.status]}`}
+                        >
+                          {story.status}
                         </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(story.updatedAt).toLocaleDateString("en-IE", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {filtered.length === 0 && (
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={progress} className="h-1.5 w-20" />
+                          <span className="text-xs text-muted-foreground">
+                            {completed}/{story.sections.length}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(story.updatedAt).toLocaleDateString("en-IE", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              {!loading && filtered.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="py-12 text-center">
                     <Film className="mx-auto h-8 w-8 text-muted-foreground/50" />
                     <p className="mt-2 text-sm text-muted-foreground">
-                      No stories match your filters.
+                      {stories.length === 0
+                        ? "No stories yet. Create your first story to get started."
+                        : "No stories match your filters."}
                     </p>
                   </TableCell>
                 </TableRow>

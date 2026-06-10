@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,23 +8,60 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { storyTemplates } from "@/lib/data/stories";
-import type { StoryType } from "@/lib/data/stories";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { StoryType, StoryTemplate, BrandVoice } from "@/lib/data/stories";
+import { listTemplates, listBrandVoices, createStory } from "@/lib/data/api";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 
 export default function NewStoryPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedType, setSelectedType] = useState<StoryType | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>("none");
   const [title, setTitle] = useState("");
+  const [storyTemplates, setStoryTemplates] = useState<StoryTemplate[]>([]);
+  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([listTemplates(), listBrandVoices()])
+      .then(([templates, voices]) => {
+        setStoryTemplates(templates);
+        setBrandVoices(voices);
+        if (voices.length > 0) setSelectedVoiceId(voices[0].id);
+      })
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load templates")
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
   const selectedTemplate = storyTemplates.find((t) => t.id === selectedTemplateId);
 
-  function handleCreate() {
-    // In a real app this would create the story via API
-    // For now, redirect to stories list
-    router.push("/stories");
+  async function handleCreate() {
+    if (!selectedTemplateId || !title.trim()) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const storyId = await createStory({
+        title: title.trim(),
+        templateId: selectedTemplateId,
+        brandVoiceId: selectedVoiceId !== "none" ? selectedVoiceId : null,
+      });
+      router.push(`/stories/${storyId}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create story");
+      setCreating(false);
+    }
   }
 
   return (
@@ -44,6 +81,12 @@ export default function NewStoryPage() {
           Choose your narrative type, pick a template, and give it a title.
         </p>
       </div>
+
+      {error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       {/* Step indicator */}
       <div className="flex items-center gap-2">
@@ -66,8 +109,15 @@ export default function NewStoryPage() {
         ))}
       </div>
 
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
+          <p className="mt-3 text-sm text-muted-foreground">Loading templates...</p>
+        </div>
+      )}
+
       {/* Step 1: Choose Type */}
-      {step === 1 && (
+      {!loading && step === 1 && (
         <div className="grid gap-3 md:grid-cols-2">
           {(["origin", "launch", "pitch", "case_study", "brand_manifesto", "explainer"] as StoryType[]).map(
             (type) => {
@@ -98,7 +148,7 @@ export default function NewStoryPage() {
       )}
 
       {/* Step 2: Pick Template */}
-      {step === 2 && selectedType && (
+      {!loading && step === 2 && selectedType && (
         <div className="space-y-4">
           {storyTemplates
             .filter((t) => t.type === selectedType)
@@ -134,7 +184,7 @@ export default function NewStoryPage() {
       )}
 
       {/* Step 3: Name It */}
-      {step === 3 && selectedTemplate && (
+      {!loading && step === 3 && selectedTemplate && (
         <Card>
           <CardHeader>
             <CardTitle>Name Your Story</CardTitle>
@@ -153,6 +203,25 @@ export default function NewStoryPage() {
                 onChange={(e) => setTitle(e.target.value)}
                 className="text-base"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="brand-voice">Brand Voice</Label>
+              <Select
+                value={selectedVoiceId}
+                onValueChange={(v) => setSelectedVoiceId(v ?? "none")}
+              >
+                <SelectTrigger id="brand-voice" className="w-full">
+                  <SelectValue placeholder="Choose a brand voice" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No brand voice</SelectItem>
+                  {brandVoices.map((voice) => (
+                    <SelectItem key={voice.id} value={voice.id}>
+                      {voice.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="rounded-lg bg-muted/50 p-4">
               <p className="text-sm font-medium">Sections you will write:</p>
@@ -174,7 +243,7 @@ export default function NewStoryPage() {
         <Button
           variant="outline"
           onClick={() => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3)}
-          disabled={step === 1}
+          disabled={step === 1 || creating}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
@@ -193,16 +262,22 @@ export default function NewStoryPage() {
               }
             }}
             disabled={
-              (step === 1 && !selectedType) || (step === 2 && !selectedTemplateId)
+              loading ||
+              (step === 1 && !selectedType) ||
+              (step === 2 && !selectedTemplateId)
             }
           >
             Continue
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
-          <Button onClick={handleCreate} disabled={!title.trim()}>
-            <Check className="mr-2 h-4 w-4" />
-            Create Story
+          <Button onClick={handleCreate} disabled={!title.trim() || creating}>
+            {creating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="mr-2 h-4 w-4" />
+            )}
+            {creating ? "Creating..." : "Create Story"}
           </Button>
         )}
       </div>

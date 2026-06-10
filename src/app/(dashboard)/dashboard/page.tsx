@@ -1,22 +1,69 @@
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import {
-  stories,
-  brandVoices,
   storyTypeLabels,
   storyStatusColors,
   getStoryProgress,
   getCompletedSections,
 } from "@/lib/data/stories";
-import { Film, PenLine, Globe, Palette, Plus } from "lucide-react";
+import type { Story, BrandVoice } from "@/lib/data/stories";
+import {
+  getCurrentUser,
+  listStories,
+  listBrandVoices,
+  seedDemoData,
+} from "@/lib/data/api";
+import { Film, PenLine, Globe, Palette, Plus, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function DashboardPage() {
+  const [stories, setStories] = useState<Story[]>([]);
+  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
+  const [userLabel, setUserLabel] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      const [user, fetchedStories, fetchedVoices] = await Promise.all([
+        getCurrentUser(),
+        listStories(),
+        listBrandVoices(),
+      ]);
+      setUserLabel(user.fullName || user.email);
+      setStories(fetchedStories);
+      setBrandVoices(fetchedVoices);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function handleSeed() {
+    setSeeding(true);
+    setError(null);
+    try {
+      await seedDemoData();
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load demo data");
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   const totalStories = stories.length;
   const inProgress = stories.filter((s) => s.status === "draft" || s.status === "review").length;
@@ -27,14 +74,58 @@ export default async function DashboardPage() {
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   );
 
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Loading your storytelling overview...</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="mt-2 h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {[0, 1].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back, {user?.user_metadata?.full_name || user?.email}. Here is your storytelling overview.
+          Welcome back, {userLabel}. Here is your storytelling overview.
         </p>
       </div>
+
+      {error && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       <div className="flex justify-end">
         <Link href="/stories/new">
@@ -116,9 +207,26 @@ export default async function DashboardPage() {
                 );
               })}
             {stories.filter((s) => s.status !== "published").length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No active stories. Start writing your first narrative.
-              </p>
+              <div className="py-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No active stories. Start writing your first narrative.
+                </p>
+                {totalStories === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={handleSeed}
+                    disabled={seeding}
+                  >
+                    {seeding ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    {seeding ? "Loading demo data..." : "Load demo data"}
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -145,6 +253,11 @@ export default async function DashboardPage() {
                 <Badge variant="secondary">{storyTypeLabels[story.type]}</Badge>
               </Link>
             ))}
+            {recentStories.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No stories yet. Your edits will appear here.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -177,6 +290,11 @@ export default async function DashboardPage() {
                 </Link>
               ))}
             </div>
+            {brandVoices.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No brand voices configured yet. Define one on the Brand Voice page.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

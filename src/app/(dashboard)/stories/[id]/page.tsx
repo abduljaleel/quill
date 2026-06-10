@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useEffect, useRef, useState, use } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,15 +8,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import {
-  stories,
-  brandVoices,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   storyTypeLabels,
   storyStatusColors,
-  getStoryProgress,
-  getCompletedSections,
   getWordCount,
 } from "@/lib/data/stories";
-import type { StorySection } from "@/lib/data/stories";
+import type {
+  Story,
+  StorySection,
+  StoryStatus,
+  BrandVoice,
+} from "@/lib/data/stories";
+import {
+  getStory,
+  listBrandVoices,
+  updateSectionContent as persistSectionContent,
+  updateStoryStatus,
+} from "@/lib/data/api";
 import {
   ArrowLeft,
   Check,
@@ -27,6 +41,7 @@ import {
   Users,
   MessageSquare,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 
 export default function StoryEditorPage({
@@ -35,7 +50,43 @@ export default function StoryEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const story = stories.find((s) => s.id === id);
+  const [story, setStory] = useState<Story | null>(null);
+  const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([getStory(id), listBrandVoices()])
+      .then(([fetchedStory, voices]) => {
+        setStory(fetchedStory);
+        setBrandVoices(voices);
+      })
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Failed to load story")
+      )
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
+        <p className="mt-3 text-sm text-muted-foreground">Loading story...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <p className="text-lg font-medium">Something went wrong</p>
+        <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+        <Link href="/stories" className="mt-4">
+          <Button variant="outline">Back to Stories</Button>
+        </Link>
+      </div>
+    );
+  }
 
   if (!story) {
     return (
@@ -48,21 +99,28 @@ export default function StoryEditorPage({
     );
   }
 
-  return <StoryEditor story={story} />;
+  return <StoryEditor story={story} brandVoices={brandVoices} />;
 }
 
 function StoryEditor({
   story: initialStory,
+  brandVoices,
 }: {
-  story: (typeof stories)[0];
+  story: Story;
+  brandVoices: BrandVoice[];
 }) {
   const [sections, setSections] = useState(initialStory.sections);
   const [activeSection, setActiveSection] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
+  const [status, setStatus] = useState<StoryStatus>(initialStory.status);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const savedContentRef = useRef<Record<string, string>>(
+    Object.fromEntries(initialStory.sections.map((s) => [s.id, s.content]))
+  );
 
   const brandVoice = brandVoices.find((v) => v.id === initialStory.brandVoiceId);
   const progress = Math.round(
-    (sections.filter((s) => s.content.trim().length > 0).length / sections.length) * 100
+    (sections.filter((s) => s.content.trim().length > 0).length / Math.max(1, sections.length)) * 100
   );
   const completedCount = sections.filter((s) => s.content.trim().length > 0).length;
 
@@ -73,6 +131,33 @@ function StoryEditor({
     setSections((prev) =>
       prev.map((s, i) => (i === index ? { ...s, content } : s))
     );
+  }
+
+  async function persistSection(index: number) {
+    const section = sections[index];
+    if (!section) return;
+    if (savedContentRef.current[section.id] === section.content) return;
+    setSaveState("saving");
+    try {
+      await persistSectionContent(section.id, section.content);
+      savedContentRef.current[section.id] = section.content;
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }
+
+  async function handleStatusChange(next: StoryStatus) {
+    const previous = status;
+    setStatus(next);
+    setSaveState("saving");
+    try {
+      await updateStoryStatus(initialStory.id, next);
+      setSaveState("saved");
+    } catch {
+      setStatus(previous);
+      setSaveState("error");
+    }
   }
 
   return (
@@ -93,14 +178,21 @@ function StoryEditor({
                 {storyTypeLabels[initialStory.type]}
               </Badge>
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${storyStatusColors[initialStory.status]}`}
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${storyStatusColors[status]}`}
               >
-                {initialStory.status}
+                {status}
               </span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <span className="text-xs text-muted-foreground">
+            {saveState === "saving" && "Saving..."}
+            {saveState === "saved" && "Saved"}
+            {saveState === "error" && (
+              <span className="text-destructive">Save failed</span>
+            )}
+          </span>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               {completedCount}/{sections.length} sections
@@ -108,6 +200,21 @@ function StoryEditor({
             <Progress value={progress} className="h-2 w-24" />
             <span className="text-sm font-medium">{progress}%</span>
           </div>
+          <Select
+            value={status}
+            onValueChange={(v) => {
+              if (v && v !== status) handleStatusChange(v as StoryStatus);
+            }}
+          >
+            <SelectTrigger size="sm">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="review">In Review</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant="outline"
             size="sm"
@@ -134,6 +241,7 @@ function StoryEditor({
                   index={index}
                   isActive={activeSection === index}
                   onFocus={() => setActiveSection(index)}
+                  onBlur={() => persistSection(index)}
                   onContentChange={(content) =>
                     updateSectionContent(index, content)
                   }
@@ -159,7 +267,7 @@ function StoryEditor({
                 </span>
               </div>
               <Progress
-                value={Math.min(100, (totalWords / totalTarget) * 100)}
+                value={Math.min(100, (totalWords / Math.max(1, totalTarget)) * 100)}
                 className="mt-2 h-1.5"
               />
             </CardContent>
@@ -228,7 +336,7 @@ function StoryEditor({
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                {initialStory.targetAudience}
+                {initialStory.targetAudience || "No target audience defined yet."}
               </p>
             </CardContent>
           </Card>
@@ -290,12 +398,14 @@ function SectionEditor({
   index,
   isActive,
   onFocus,
+  onBlur,
   onContentChange,
 }: {
   section: StorySection;
   index: number;
   isActive: boolean;
   onFocus: () => void;
+  onBlur: () => void;
   onContentChange: (content: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -357,6 +467,7 @@ function SectionEditor({
             value={section.content}
             onChange={(e) => onContentChange(e.target.value)}
             onFocus={onFocus}
+            onBlur={onBlur}
             className="min-h-36 resize-y text-base leading-relaxed"
           />
         </div>
