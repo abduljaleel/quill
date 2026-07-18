@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,17 @@ import { listTemplates, listBrandVoices, createStory } from "@/lib/data/api";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 
 export default function NewStoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewStoryForm />
+    </Suspense>
+  );
+}
+
+function NewStoryForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetTemplateId = searchParams.get("template");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedType, setSelectedType] = useState<StoryType | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -38,6 +48,16 @@ export default function NewStoryPage() {
         setStoryTemplates(templates);
         setBrandVoices(voices);
         if (voices.length > 0) setSelectedVoiceId(voices[0].id);
+        // Deep-link from the Templates page: pre-select the chosen template and
+        // jump straight to naming the story.
+        if (presetTemplateId) {
+          const preset = templates.find((t) => t.id === presetTemplateId);
+          if (preset) {
+            setSelectedType(preset.type);
+            setSelectedTemplateId(preset.id);
+            setStep(3);
+          }
+        }
       })
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Failed to load templates")

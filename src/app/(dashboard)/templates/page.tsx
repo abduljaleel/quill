@@ -113,7 +113,7 @@ export default function TemplatesPage() {
                   </p>
                 </div>
 
-                <Link href="/stories/new">
+                <Link href={`/stories/new?template=${template.id}`}>
                   <Button variant="outline" className="w-full">
                     Use Template
                     <ArrowRight className="ml-2 h-4 w-4" />

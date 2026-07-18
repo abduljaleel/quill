@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Asset, AssetType } from "@/lib/data/stories";
-import { listAssets, listStoryRefs, createAsset } from "@/lib/data/api";
+import { listAssets, listStoryRefs, createAsset, deleteAsset } from "@/lib/data/api";
 import {
   Upload,
   Image,
@@ -31,7 +31,15 @@ import {
   Link2,
   FolderOpen,
   Loader2,
+  Trash2,
 } from "lucide-react";
+
+function inferTypeFromMime(mime: string): AssetType {
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio";
+  return "document";
+}
 
 const assetIcons: Record<AssetType, React.ElementType> = {
   image: Image,
@@ -60,6 +68,7 @@ export default function AssetsPage() {
   const [newStoryId, setNewStoryId] = useState<string>("none");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([listAssets(), listStoryRefs()])
@@ -95,6 +104,33 @@ export default function AssetsPage() {
     }
   }
 
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    setNewFilename(file.name);
+    setNewType(inferTypeFromMime(file.type));
+    setNewStoryId("none");
+    setAddError(null);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(asset: Asset) {
+    if (!window.confirm(`Delete "${asset.filename}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(asset.id);
+    setError(null);
+    try {
+      await deleteAsset(asset.id);
+      setAssets((prev) => prev.filter((a) => a.id !== asset.id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete asset");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const filtered = assets.filter((a) => {
     if (typeFilter !== "all" && a.type !== typeFilter) return false;
     return true;
@@ -125,6 +161,8 @@ export default function AssetsPage() {
       <div
         className="cursor-pointer rounded-lg border-2 border-dashed border-muted-foreground/25 p-12 text-center transition-colors hover:border-muted-foreground/40"
         onClick={() => setDialogOpen(true)}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
       >
         <Upload className="mx-auto h-10 w-10 text-muted-foreground/50" />
         <p className="mt-4 text-sm font-medium">
@@ -172,7 +210,21 @@ export default function AssetsPage() {
           filtered.map((asset) => {
             const Icon = assetIcons[asset.type];
             return (
-              <Card key={asset.id} className="overflow-hidden">
+              <Card key={asset.id} className="group relative overflow-hidden">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  aria-label={`Delete ${asset.filename}`}
+                  className="absolute right-2 top-2 z-10 h-7 w-7 text-destructive opacity-0 shadow-sm transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                  disabled={deletingId === asset.id}
+                  onClick={() => handleDelete(asset)}
+                >
+                  {deletingId === asset.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
                 {/* Thumbnail placeholder */}
                 <div
                   className={`flex h-32 items-center justify-center ${assetColors[asset.type]}`}

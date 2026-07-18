@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const brandVoiceCount = brandVoices.length;
 
   const recentStories = [...stories].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
   if (loading) {
@@ -234,8 +234,8 @@ export default function DashboardPage() {
         {/* Recent Edits */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Edits</CardTitle>
-            <CardDescription>Latest updates across all stories</CardDescription>
+            <CardTitle>Recently Created</CardTitle>
+            <CardDescription>Your newest stories first</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {recentStories.slice(0, 4).map((story) => (
@@ -247,7 +247,7 @@ export default function DashboardPage() {
                 <div className="space-y-1 min-w-0">
                   <p className="font-medium leading-snug truncate">{story.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    Last edited {new Date(story.updatedAt).toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" })}
+                    Created {new Date(story.createdAt).toLocaleDateString("en-IE", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
                 </div>
                 <Badge variant="secondary">{storyTypeLabels[story.type]}</Badge>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
               {brandVoices.map((voice) => (
                 <Link
                   key={voice.id}
-                  href="/brand"
+                  href={`/brand?voice=${voice.id}`}
                   className="rounded-lg border p-4 transition-colors hover:bg-muted/50"
                 >
                   <p className="font-medium">{voice.name}</p>

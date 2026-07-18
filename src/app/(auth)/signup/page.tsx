@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -22,8 +23,9 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess("");
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -38,8 +40,17 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    // With email confirmation enabled, signUp returns no session — sending the
+    // user to a protected route would just bounce them back to /login.
+    if (data.session) {
+      router.push("/dashboard");
+      router.refresh();
+    } else {
+      setLoading(false);
+      setSuccess(
+        "Account created. Check your email to confirm your address, then sign in."
+      );
+    }
   }
 
   return (
@@ -54,6 +65,11 @@ export default function SignupPage() {
             {error && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
+              </div>
+            )}
+            {success && (
+              <div className="rounded-md border border-emerald-600/30 bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                {success}
               </div>
             )}
             <div className="space-y-2">

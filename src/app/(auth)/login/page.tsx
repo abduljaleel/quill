@@ -6,21 +6,38 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (searchParams.get("error") === "auth") {
+      setError("Sign-in link was invalid or expired. Please try again.");
+    }
+  }, [searchParams]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess("");
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -41,6 +58,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError("");
+    setSuccess("");
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -53,9 +71,8 @@ export default function LoginPage() {
       return;
     }
 
-    setError("");
     setLoading(false);
-    alert("Check your email for the login link!");
+    setSuccess(`Check your email — we sent a login link to ${email}.`);
   }
 
   return (
@@ -70,6 +87,11 @@ export default function LoginPage() {
             {error && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
+              </div>
+            )}
+            {success && (
+              <div className="rounded-md border border-emerald-600/30 bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                {success}
               </div>
             )}
             <div className="space-y-2">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,16 @@ import {
 } from "lucide-react";
 
 export default function BrandVoicePage() {
+  return (
+    <Suspense fallback={null}>
+      <BrandVoiceManager />
+    </Suspense>
+  );
+}
+
+function BrandVoiceManager() {
+  const searchParams = useSearchParams();
+  const requestedVoiceId = searchParams.get("voice");
   const [brandVoices, setBrandVoices] = useState<BrandVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<BrandVoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,20 +67,19 @@ export default function BrandVoicePage() {
       .then((voices) => {
         setBrandVoices(voices);
         if (voices.length > 0) {
-          const first = voices[0];
-          setSelectedVoice(first);
-          setEditName(first.name);
-          setEditTone(first.toneDescriptors.join(", "));
-          setEditExamples(first.examplePhrases.join("\n"));
-          setEditAvoid(first.avoidPhrases.join("\n"));
-          setEditAudience(first.targetAudience);
+          const requested =
+            (requestedVoiceId &&
+              voices.find((v) => v.id === requestedVoiceId)) ||
+            voices[0];
+          selectVoice(requested);
         }
       })
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Failed to load brand voices")
       )
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedVoiceId]);
 
   const toneList = editTone
     .split(",")
@@ -83,6 +93,29 @@ export default function BrandVoicePage() {
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean);
+
+  const isDirty = selectedVoice
+    ? editName.trim() !== selectedVoice.name ||
+      editAudience.trim() !== selectedVoice.targetAudience ||
+      JSON.stringify(toneList) !==
+        JSON.stringify(selectedVoice.toneDescriptors) ||
+      JSON.stringify(exampleList) !==
+        JSON.stringify(selectedVoice.examplePhrases) ||
+      JSON.stringify(avoidList) !== JSON.stringify(selectedVoice.avoidPhrases)
+    : false;
+
+  function handleSelectVoice(voice: BrandVoice) {
+    if (voice.id === selectedVoice?.id) return;
+    if (
+      isDirty &&
+      !window.confirm(
+        "You have unsaved changes to this voice. Discard them and switch?"
+      )
+    ) {
+      return;
+    }
+    selectVoice(voice);
+  }
 
   async function handleNewVoice() {
     setCreating(true);
@@ -225,7 +258,7 @@ export default function BrandVoicePage() {
                     ? "border-primary ring-2 ring-primary/20"
                     : ""
                 }`}
-                onClick={() => selectVoice(voice)}
+                onClick={() => handleSelectVoice(voice)}
               >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">{voice.name}</CardTitle>

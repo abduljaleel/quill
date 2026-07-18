@@ -129,7 +129,7 @@ export default function StoriesPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Progress</TableHead>
-                <TableHead>Last Edited</TableHead>
+                <TableHead>Created</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -178,7 +178,7 @@ export default function StoriesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {new Date(story.updatedAt).toLocaleDateString("en-IE", {
+                        {new Date(story.createdAt).toLocaleDateString("en-IE", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",

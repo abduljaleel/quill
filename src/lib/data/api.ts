@@ -207,7 +207,13 @@ function mapStory(row: StoryRow): Story {
     : [];
   const sections = [...(row.story_sections ?? [])]
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-    .map((s, i) => mapSection(s, templateSections[i]));
+    .map((s, i) =>
+      mapSection(
+        s,
+        templateSections.find((td) => td.name === s.section_type) ??
+          templateSections[i]
+      )
+    );
   const createdAt = row.created_at ?? new Date().toISOString();
   return {
     id: row.id,
@@ -236,6 +242,21 @@ function mapAsset(row: AssetRow): Asset {
 
 // ---------- Story templates (global catalog, self-seeding) ----------
 
+// Rows are ordered by created_at ascending, so the first occurrence of a name
+// is the earliest. Keeping only that one means a seeding race that duplicated
+// the global catalog never surfaces duplicates in the UI or the type→template
+// map, and template ids stay stable.
+function dedupeByName(rows: TemplateRow[]): TemplateRow[] {
+  const seen = new Set<string>();
+  const out: TemplateRow[] = [];
+  for (const row of rows) {
+    if (seen.has(row.name)) continue;
+    seen.add(row.name);
+    out.push(row);
+  }
+  return out;
+}
+
 async function fetchTemplateRows(supabase: Supabase): Promise<TemplateRow[]> {
   const { data, error } = await supabase
     .from("story_templates")
@@ -247,9 +268,14 @@ async function fetchTemplateRows(supabase: Supabase): Promise<TemplateRow[]> {
 
 async function ensureTemplateRows(supabase: Supabase): Promise<TemplateRow[]> {
   const existing = await fetchTemplateRows(supabase);
-  if (existing.length > 0) return existing;
+  const existingNames = new Set(existing.map((row) => row.name));
+  // Only insert seed templates that are actually missing by name, so re-seeding
+  // (or a partially-seeded catalog) is idempotent and never blindly re-inserts
+  // the whole catalog.
+  const missing = seedTemplates.filter((t) => !existingNames.has(t.name));
+  if (missing.length === 0) return dedupeByName(existing);
   const { error } = await supabase.from("story_templates").insert(
-    seedTemplates.map((t) => ({
+    missing.map((t) => ({
       name: t.name,
       story_type: t.type,
       sections: t.sections,
@@ -259,7 +285,7 @@ async function ensureTemplateRows(supabase: Supabase): Promise<TemplateRow[]> {
     }))
   );
   if (error) throw new Error(error.message);
-  return fetchTemplateRows(supabase);
+  return dedupeByName(await fetchTemplateRows(supabase));
 }
 
 export async function listTemplates(): Promise<StoryTemplate[]> {
@@ -356,7 +382,14 @@ export async function listStories(): Promise<Story[]> {
   return ((data ?? []) as unknown as StoryRow[]).map(mapStory);
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getStory(id: string): Promise<Story | null> {
+  // Guard against non-UUID ids (stale bookmarks, seed-style "story-1") so the
+  // page renders its friendly "Story not found" state instead of surfacing a
+  // raw Postgres 22P02 cast error.
+  if (!UUID_RE.test(id)) return null;
   const { supabase, orgId } = await getCtx();
   const { data, error } = await supabase
     .from("stories")
